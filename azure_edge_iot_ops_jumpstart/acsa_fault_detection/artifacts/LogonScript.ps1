@@ -388,7 +388,7 @@ $principalID = az k8s-extension list --cluster-name $env:arcClusterName --resour
 az role assignment create --assignee-object-id $principalID --assignee-principal-type ServicePrincipal --role "Storage Blob Data Owner" --scope "/subscriptions/$Env:subscriptionId/resourceGroups/$env:resourceGroup/providers/Microsoft.Storage/storageAccounts/$env:storageAccountName"
 
 
-$acsadeployYamlUrl = "https://raw.githubusercontent.com/microsoft/azure_arc/main/azure_edge_iot_ops_jumpstart/acsa_fault_detection/yaml/acsa-deploy.yaml"
+$acsadeployYamlUrl = "https://raw.githubusercontent.com/ldabas-msft/azure_arc/acsa-testing/azure_edge_iot_ops_jumpstart/acsa_fault_detection/yaml/acsa-deploy.yaml"
 $acsadeployYamlPath = "acsa-deploy.yaml"
 Invoke-WebRequest -Uri $acsadeployYamlUrl -OutFile $acsadeployYamlPath
 
