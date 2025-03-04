@@ -1,0 +1,29 @@
+---
+ azureSubscriptionId: "subscription ID"
+ azureTenant: "tenant ID"
+ azureRegion: "Region"
+ azureResourceGroup: "Azure Resource Group Name"
+ hostOS: Ubuntu
+ hosts:
+  - hostName: "sample-host-name-1" 
+    arcEnable: true
+    hostMACAddress: "00:00:00:00:00:00"
+    network: "DHCP"
+    disk: "use-available"
+  - hostName: "sample-host-name-2" 
+    arcEnable: true
+    hostMACAddress: "00:00:00:00:00:00"
+    network: "DHCP"
+    disk: "use-available"
+  - hostName: "sample-host-name-3" 
+    arcEnable: true
+    hostMACAddress: "00:00:00:00:00:00"
+    network: "DHCP"
+    disk: "use-available"
+ k8sCluster:
+    type: "k3s"
+    arcEnable: true
+    multiNode: false
+ workloadsToDeploy:
+   - contosoMotors
+   - contosoHyperMarket
