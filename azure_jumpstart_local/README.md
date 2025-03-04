@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes how to use [Cubic](https://launchpad.net/cubic) (Custom Ubuntu ISO Creator) to modify an official Ubuntu 22.04 Desktop ISO so that, once installed, the system will fetch and run a remote script **on the first user login** and then remove itself. This approach is handy if you want minimal customization without implementing a full unattended install or complex cloud-init configuration.
+This document describes how to use [Cubic](https://launchpad.net/cubic) (Custom Ubuntu ISO Creator) to modify an official Ubuntu 22.04 Desktop ISO so that, once installed, the system will fetch and run a remote script **on the first user login** and then remove itself. 
 
 ## Prerequisites
 
