@@ -111,4 +111,6 @@ steps:
           githubAccount = "$(githubAccount)"
           githubBranch = "$(githubBranch)"
           location = "eastus"
+          governResourceTags = $true
+          vmAutologon = $false
         }
