@@ -34,7 +34,7 @@ variables:
   value: ${{parameters.githubBranch}}
 
 pool:
-  vmImage: 'windows-latest'
+  vmImage: 'localbox-pool'
 
 steps:
 - task: AzurePowerShell@5
@@ -50,6 +50,7 @@ steps:
 
 - task: AzurePowerShell@5
   displayName: 'Deploy Bicep template'
+  timeoutInMinutes: 600
   inputs:
     azureSubscription: ${{parameters.AzureSubscription}}
     ScriptType: 'InlineScript'
@@ -114,3 +115,26 @@ steps:
           governResourceTags = $true
           vmAutologon = $false
         }
+- task: AzurePowerShell@5
+  displayName: 'Upload Pester test-results from HCIBox VM'
+  inputs:
+    azureSubscription: ${{parameters.AzureSubscription}}
+    ScriptType: FilePath
+    azurePowerShellVersion: 'LatestVersion'
+    ScriptPath: 'azure_jumpstart_hcibox/artifacts/PowerShell/Wait-HCIBoxDeployment.ps1'
+    ScriptArguments: -ResourceGroupName $(ResourceGroupName) -SubscriptionId $(spnProviderId) -TenantId $(spnTenantId) -ClientId $(spnClientId) -ClientSecret $(spnClientSecret)
+
+- task: AzurePowerShell@5
+  displayName: 'Download Pester test-results from storage account to pipeline agent'
+  inputs:
+    azureSubscription: ${{parameters.AzureSubscription}}
+    ScriptType: FilePath
+    azurePowerShellVersion: 'LatestVersion'
+    ScriptPath: 'azure_jumpstart_hcibox/artifacts/PowerShell/Get-PesterResult.ps1'
+    ScriptArguments: -ResourceGroupName $(ResourceGroupName)
+
+- task: PublishTestResults@2
+  displayName: 'Publish Test Results'
+  inputs:
+    testResultsFormat: NUnit
+    testResultsFiles: '$(System.DefaultWorkingDirectory)/testresults/*.xml'
