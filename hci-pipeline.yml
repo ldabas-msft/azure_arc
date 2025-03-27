@@ -37,6 +37,14 @@ pool:
   name: 'localbox-pool'
 
 steps:
+- task: PowerShell@2
+  displayName: 'Install PowerShell Core'
+  inputs:
+    targetType: 'inline'
+    script: |
+      Write-Host "Installing PowerShell Core..."
+      winget install Microsoft.PowerShell --accept-source-agreements --accept-package-agreements
+      Write-Host "PowerShell Core installation completed"
 - task: AzurePowerShell@5
   displayName: 'Deploy resource group'
   inputs:
