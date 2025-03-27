@@ -34,7 +34,7 @@ variables:
   value: ${{parameters.githubBranch}}
 
 pool:
-  vmImage: 'localbox-pool'
+  name: 'localbox-pool'
 
 steps:
 - task: AzurePowerShell@5
