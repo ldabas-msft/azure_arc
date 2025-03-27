@@ -41,10 +41,15 @@ steps:
   displayName: 'Install PowerShell Core'
   inputs:
     targetType: 'inline'
+    pwsh: false  # This tells the task to use Windows PowerShell instead of PowerShell Core
     script: |
       Write-Host "Installing PowerShell Core..."
       winget install Microsoft.PowerShell --accept-source-agreements --accept-package-agreements
       Write-Host "PowerShell Core installation completed"
+      
+      # Refresh environment variables
+      $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+
 - task: AzurePowerShell@5
   displayName: 'Deploy resource group'
   inputs:
