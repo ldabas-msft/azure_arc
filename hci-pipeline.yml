@@ -40,6 +40,64 @@ pool:
 
 steps:
 
+- task: PowerShell@2
+  displayName: 'Environment Diagnostic Info'
+  inputs:
+    targetType: 'inline'
+    script: |
+      Write-Host "========== System Information ==========" -ForegroundColor Green
+      Write-Host "Computer Name: $env:COMPUTERNAME"
+      Write-Host "OS Details:"
+      Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, BuildNumber, OSArchitecture
+      
+      Write-Host "`n========== PowerShell Versions ==========" -ForegroundColor Green
+      Write-Host "PowerShell Version Table:"
+      $PSVersionTable
+      
+      Write-Host "`nPowerShell Core Installation (if exists):"
+      $pwshPath = Get-Command pwsh -ErrorAction SilentlyContinue
+      if ($pwshPath) {
+          Write-Host "PowerShell Core Path: $($pwshPath.Path)"
+          Write-Host "PowerShell Core Version: $((& pwsh -Version))"
+      } else {
+          Write-Host "PowerShell Core (pwsh) is not installed"
+      }
+      
+      Write-Host "`nWindows PowerShell Installation:"
+      $psPath = Get-Command powershell -ErrorAction SilentlyContinue
+      Write-Host "Windows PowerShell Path: $($psPath.Path)"
+      
+      Write-Host "`n========== Azure PowerShell Modules ==========" -ForegroundColor Green
+      Write-Host "Az Module Versions:"
+      Get-Module -Name Az* -ListAvailable | 
+          Sort-Object Name, Version | 
+          Format-Table Name, Version, ModuleBase -AutoSize
+      
+      Write-Host "`n========== Environment Variables ==========" -ForegroundColor Green
+      Get-ChildItem Env: | Sort-Object Name | Format-Table Name, Value -AutoSize
+      
+      Write-Host "`n========== Available PowerShell Execution Policies ==========" -ForegroundColor Green
+      Get-ExecutionPolicy -List
+      
+      Write-Host "`n========== Working Directory ==========" -ForegroundColor Green
+      Write-Host "Current Directory: $(Get-Location)"
+      Write-Host "Build Directory: $env:BUILD_SOURCESDIRECTORY"
+      
+      Write-Host "`n========== Available Commands ==========" -ForegroundColor Green
+      Write-Host "Azure Commands Available:"
+      Get-Command -Module Az.* | Group-Object ModuleName | 
+          Format-Table Name, Count -AutoSize
+      
+      Write-Host "`n========== Network Connectivity ==========" -ForegroundColor Green
+      Write-Host "Testing connection to Azure:"
+      Test-NetConnection -ComputerName "management.azure.com" -Port 443
+      
+      Write-Host "`n========== Disk Space ==========" -ForegroundColor Green
+      Get-Volume | Where-Object {$_.DriveLetter} | 
+          Format-Table DriveLetter, FileSystemLabel, FileSystem, 
+                      @{N='Size(GB)';E={[math]::Round($_.Size/1GB,2)}}, 
+                      @{N='FreeSpace(GB)';E={[math]::Round($_.SizeRemaining/1GB,2)}}
+
 - task: AzurePowerShell@5
   displayName: 'Deploy resource group'
   inputs:
