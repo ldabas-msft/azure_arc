@@ -104,8 +104,7 @@ steps:
   inputs:
     azureSubscription: ${{parameters.AzureSubscription}}
     ScriptType: 'InlineScript'
-    azurePowerShellVersion: OtherVersion
-    preferredAzurePowerShellVersion: '5.6.0'
+    azurePowerShellVersion: 'LatestVersion'
     pwsh: true
     Inline: |
       Write-Host "Running deployment from machine $env:COMPUTERNAME"
