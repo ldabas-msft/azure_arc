@@ -106,8 +106,15 @@ steps:
     ScriptType: 'InlineScript'
     azurePowerShellVersion: OtherVersion
     preferredAzurePowerShellVersion: '5.6.0'
-    pwsh: false
+    pwsh: true
     Inline: |
+      Write-Host "Running deployment from machine $env:COMPUTERNAME"
+      # Add TLS 1.2 support
+      [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+      
+      # Import Az modules explicitly
+      Import-Module Az.Accounts
+      Import-Module Az.Resources
       Write-Host "Running deployment from machine $env:COMPUTERNAME"
       $RGname = "$(ResourceGroupName)"
       New-AzResourceGroup -Name $RGname -Location "eastus" -Force
