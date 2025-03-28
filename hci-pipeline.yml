@@ -44,6 +44,7 @@ steps:
   displayName: 'Environment Diagnostic Info'
   inputs:
     targetType: 'inline'
+    pwsh: false
     script: |
       Write-Host "========== System Information ==========" -ForegroundColor Green
       Write-Host "Computer Name: $env:COMPUTERNAME"
