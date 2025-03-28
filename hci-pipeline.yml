@@ -46,6 +46,7 @@ steps:
     azureSubscription: ${{parameters.AzureSubscription}}
     ScriptType: 'InlineScript'
     azurePowerShellVersion: 'LatestVersion'
+    pwsh: false
     Inline: |
       Write-Host "Running deployment from machine $env:COMPUTERNAME"
       $RGname = "$(ResourceGroupName)"
