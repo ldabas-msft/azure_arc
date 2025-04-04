@@ -20,7 +20,7 @@ $vmName = "HCIBox-Client"
 $runCommandName = "RunTestsDevops"
 
 # Replace with the actual URL where your script is hosted
-$scriptUrl = "https://raw.githubusercontent.com/yourusername/yourrepo/main/Get-Tests-Devops.ps1"#### UPDATE THIS PATH TO THE PATH OF THE SCRIPT ON GITHUB
+$scriptUrl = "https://raw.githubusercontent.com/ldabas-msft/jumpstart-resources/refs/heads/main/Get-Tests-Devops.ps1"#### UPDATE THIS PATH TO THE PATH OF THE SCRIPT ON GITHUB
 
 Set-AzVMRunCommand -ResourceGroupName $ResourceGroupName -VMName $vmName -RunCommandName $runCommandName -Location $Location -SourceScriptUri $scriptUrl -Parameter @{
     SubscriptionId = $SubscriptionId
