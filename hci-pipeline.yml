@@ -37,6 +37,7 @@ pool:
   name: 'localbox-pool'
   demands:
     - Agent.OS -equals Windows_NT
+  timeoutInMinutes: 600
 
 steps:
 
@@ -120,7 +121,7 @@ steps:
 
 - task: AzurePowerShell@5
   displayName: 'Deploy Bicep template'
-  timeoutInMinutes: 600
+  timeoutInMinutes: 60
   inputs:
     azureSubscription: ${{parameters.AzureSubscription}}
     ScriptType: 'InlineScript'
