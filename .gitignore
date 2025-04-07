@@ -54,3 +54,12 @@ terraform.rc
 *.out
 .VSCodeCounter/*
 azure_jumpstart_ag/manufacturing/bicep/main.*.parameters.json
+
+# Bicep parameter files
+azure_jumpstart_hcibox/bicep/main.bicepparam
+
+# PowerShell scripts
+azure_jumpstart_hcibox/artifacts/PowerShell/Wait-ArcBoxDeployment.ps1
+azure_jumpstart_hcibox/artifacts/PowerShell/Get-PesterResult.ps1
+azure_jumpstart_hcibox/artifacts/PowerShell/Get-Tests-Devops.ps1
+azure_jumpstart_hcibox/artifacts/PowerShell/Wait-HCIBoxDeployment.ps1
