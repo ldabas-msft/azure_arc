@@ -47,7 +47,7 @@ $runCommand = Set-AzVMRunCommand -ResourceGroupName $ResourceGroupName -VMName $
 Write-Host "Run Command initiated with ID: $($runCommand.Name)" -ForegroundColor Green
 
 # Poll with timeout - will wait up to 60 minutes (3600 seconds)
-$timeout = 3600
+$timeout = 18000
 $elapsed = 0
 $pollInterval = 60
 
