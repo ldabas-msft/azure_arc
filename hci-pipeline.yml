@@ -120,7 +120,7 @@ jobs:
         Import-Module Az.Resources
         Write-Host "Running deployment from machine $env:COMPUTERNAME"
         $RGname = "$(ResourceGroupName)"
-        New-AzResourceGroup -Name $RGname -Location "westeurope" -Force
+        New-AzResourceGroup -Name $RGname -Location "eastus" -Force
 
   - task: AzurePowerShell@5
     displayName: 'Deploy Bicep template'
