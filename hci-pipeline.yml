@@ -32,7 +32,6 @@ variables:
   value: ${{ parameters.githubAccount }}
 - name: githubBranch
   value: ${{ parameters.githubBranch }}
-- name: subscriptionID
 
 jobs:
 - job: DeployPipeline
@@ -199,7 +198,7 @@ jobs:
       azurePowerShellVersion: 'LatestVersion'
       Inline: |
         Write-Host "Waiting for 7 hours..."
-        Start-Sleep -Seconds 1500  # 1500 sec for testing
+        Start-Sleep -Seconds 300  # 1500 sec for testing
         Write-Host "Wait complete!"
 
   - task: AzurePowerShell@5
