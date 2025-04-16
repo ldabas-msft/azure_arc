@@ -120,7 +120,7 @@ jobs:
         Import-Module Az.Resources
         Write-Host "Running deployment from machine $env:COMPUTERNAME"
         $RGname = "$(ResourceGroupName)"
-        New-AzResourceGroup -Name $RGname -Location "eastus" -Force
+        New-AzResourceGroup -Name $RGname -Location "westeurope" -Force
 
   - task: AzurePowerShell@5
     displayName: 'Deploy Bicep template'
@@ -185,7 +185,7 @@ jobs:
             autoUpgradeClusterResource = $false
             githubAccount = "$(githubAccount)"
             githubBranch = "$(githubBranch)"
-            location = "eastus"
+            location = "westeurope"
             governResourceTags = $true
             vmAutologon = $false
           }
