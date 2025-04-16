@@ -32,6 +32,7 @@ variables:
   value: ${{ parameters.githubAccount }}
 - name: githubBranch
   value: ${{ parameters.githubBranch }}
+- name: subscriptionID
 
 jobs:
 - job: DeployPipeline
@@ -208,7 +209,7 @@ jobs:
       ScriptType: FilePath
       azurePowerShellVersion: 'LatestVersion'
       ScriptPath: 'azure_jumpstart_hcibox/artifacts/PowerShell/Wait-HCIBoxDeployment.ps1'
-      ScriptArguments: -ResourceGroupName $(ResourceGroupName) -SubscriptionId $(spnProviderId) -TenantId $(spnTenantId) -ClientId $(spnClientId) -ClientSecret $(spnClientSecret)
+      ScriptArguments: -ResourceGroupName $(ResourceGroupName) -SubscriptionId $(subscriptionId) -TenantId $(spnTenantId) -ClientId $(spnClientId) -ClientSecret $(spnClientSecret)
 
   - task: AzurePowerShell@5
     displayName: 'Download Pester test-results from storage account to pipeline agent'
