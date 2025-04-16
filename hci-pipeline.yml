@@ -202,6 +202,44 @@ jobs:
         Write-Host "Wait complete!"
 
   - task: AzurePowerShell@5
+    displayName: 'Assign Storage Blob Data Contributor role at resource group level'
+    inputs:
+      azureSubscription: ${{ parameters.AzureSubscription }}
+      ScriptType: 'InlineScript'
+      azurePowerShellVersion: 'LatestVersion'
+      Inline: |
+        # Get the resource group
+        $resourceGroup = Get-AzResourceGroup -Name "$(ResourceGroupName)"
+        Write-Host "Resource Group: $($resourceGroup.ResourceGroupName)"
+        
+        # Get the VM and its managed identity principal ID
+        $vm = Get-AzVM -Name "HCIBox-Client" -ResourceGroupName "$(ResourceGroupName)"
+        $clientObjectId = $vm.Identity.PrincipalId
+        
+        if (!$clientObjectId) {
+            Write-Error "No managed identity found on HCIBox-Client VM. Make sure the VM has a system-assigned identity."
+            exit 1
+        }
+        
+        Write-Host "VM Identity Object ID: $clientObjectId"
+        
+        # Assign at resource group level which covers all storage accounts
+        Write-Host "Assigning Storage Blob Data Contributor role to VM identity at resource group level"
+        $roleAssignment = New-AzRoleAssignment -ObjectId $clientObjectId `
+                         -RoleDefinitionName "Storage Blob Data Contributor" `
+                         -Scope $resourceGroup.ResourceId `
+                         -ErrorAction SilentlyContinue
+                         
+        if ($roleAssignment) {
+            Write-Host "Role assignment created successfully at resource group level" -ForegroundColor Green
+        } else {
+            Write-Host "Role assignment may already exist or failed at resource group level" -ForegroundColor Yellow
+        }
+        
+        Write-Host "Waiting 20 seconds for role assignment to propagate..."
+        Start-Sleep -Seconds 20
+        Write-Host "Role assignment wait complete"
+  - task: AzurePowerShell@5
     displayName: 'Upload Pester test-results from HCIBox VM'
     inputs:
       azureSubscription: ${{ parameters.AzureSubscription }}
