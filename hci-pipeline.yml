@@ -199,7 +199,7 @@ jobs:
       azurePowerShellVersion: 'LatestVersion'
       Inline: |
         Write-Host "Waiting for 7 hours..."
-        Start-Sleep -Seconds 7200  # 7 hours in seconds
+        Start-Sleep -Seconds 1500  # 1500 sec for testing
         Write-Host "Wait complete!"
 
   - task: AzurePowerShell@5
