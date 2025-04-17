@@ -186,7 +186,7 @@ jobs:
             githubBranch = "$(githubBranch)"
             location = "westeurope"
             governResourceTags = $true
-            vmAutologon = $false
+            vmAutologon = $true
           }
 
   - task: AzurePowerShell@5
@@ -198,7 +198,7 @@ jobs:
       azurePowerShellVersion: 'LatestVersion'
       Inline: |
         Write-Host "Waiting for 7 hours..."
-        Start-Sleep -Seconds 300  # 1500 sec for testing
+        Start-Sleep -Seconds 18000  # 1500 sec for testing
         Write-Host "Wait complete!"
 
   - task: AzurePowerShell@5
@@ -246,7 +246,7 @@ jobs:
       ScriptType: FilePath
       azurePowerShellVersion: 'LatestVersion'
       ScriptPath: 'azure_jumpstart_hcibox/artifacts/PowerShell/Wait-HCIBoxDeployment.ps1'
-      ScriptArguments: -ResourceGroupName $(ResourceGroupName) -SubscriptionId $(subscriptionId) -TenantId $(spnTenantId) -ClientId $(spnClientId) -ClientSecret $(spnClientSecret)
+      ScriptArguments: -ResourceGroupName $(ResourceGroupName) -SubscriptionId $(subscriptionId) -TenantId $(spnTenantId) -ClientId $(spnClientId) -ClientSecret $(spnClientSecret) -Verbose
 
   - task: AzurePowerShell@5
     displayName: 'Download Pester test-results from storage account to pipeline agent'
