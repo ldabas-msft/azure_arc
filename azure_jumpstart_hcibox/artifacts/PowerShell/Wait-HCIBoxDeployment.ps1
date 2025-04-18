@@ -42,7 +42,6 @@ Write-Host "Executing Run Command on VM: $vmName" -ForegroundColor Green
 $logFileName = "HCIBox_Diagnostic_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
 $remoteTempPath = "C:\Windows\Temp\$logFileName"
 
-
 # Modified script that properly logs to the file
 $diagScript = @"
 Write-Host "=== STARTING DIAGNOSTIC SCRIPT ==="
@@ -86,10 +85,6 @@ finally {
 }
 "@
 
-
-# Replace placeholder with actual log path
-$diagScript = $diagScript.Replace("'LOGFILE_PATH'", "'$remoteTempPath'")
-
 # Start the main command
 try {
     Write-Host "Starting main diagnostic command..." -ForegroundColor Cyan
@@ -97,47 +92,18 @@ try {
     $mainJob = Invoke-AzVMRunCommand -ResourceGroupName $ResourceGroupName -VMName $vmName -CommandId 'RunPowerShellScript' -ScriptString $diagScript -AsJob
 
     Write-Host "Main command started with job ID: $($mainJob.Id)" -ForegroundColor Green
-    Write-Host "Monitoring log file for output at path: $remoteTempPath" -ForegroundColor Cyan
+    Write-Host "Test script executing, please wait for completion..." -ForegroundColor Cyan
 
-    # Define script to fetch logs
-    $getLogsScript = "if (Test-Path '$remoteTempPath') { Get-Content '$remoteTempPath' }"
-    
-    # Variables to track log monitoring
-    $lastPosition = 0
+    # Variables to track monitoring
     $logMonitorStartTime = Get-Date
     $maxWaitTime = New-TimeSpan -Minutes 30
     $checkInterval = 10 # seconds
-    $logCheckAttempts = 0
     
-    # Monitor logs until main job is complete
+    # Monitor job until it completes
     do {
         Start-Sleep -Seconds $checkInterval
         $elapsed = (Get-Date) - $logMonitorStartTime
         $jobStatus = Get-Job -Id $mainJob.Id
-        
-        # Get log content
-        $logsResult = Invoke-AzVMRunCommand -ResourceGroupName $ResourceGroupName -VMName $vmName -CommandId 'RunPowerShellScript' -ScriptString $getLogsScript
-        
-        if ($logsResult.Value -and $logsResult.Value[0].Message) {
-            $logs = $logsResult.Value[0].Message -split "`n"
-            
-            # Show only new log entries
-            if ($logs.Count -gt $lastPosition) {
-                $newLogs = $logs[$lastPosition..($logs.Count-1)]
-                foreach ($line in $newLogs) {
-                    if ($line.Trim()) {
-                        Write-Host $line -ForegroundColor Cyan
-                    }
-                }
-                $lastPosition = $logs.Count
-            }
-        } else {
-            # Use Set-Variable instead of increment operator
-            $logCheckAttempts = $logCheckAttempts + 1
-            if ($logCheckAttempts % 6 -eq 0) { # Report every ~60 seconds if no logs
-                Write-Host "No log entries found yet at $remoteTempPath. Still waiting..." -ForegroundColor Yellow
-            }
-        }
         
         Write-Host "Status: $($jobStatus.State) [Elapsed: $([math]::Floor($elapsed.TotalMinutes))m $($elapsed.Seconds)s]" -ForegroundColor DarkGray
     } while ($jobStatus.State -eq "Running" -and $elapsed -lt $maxWaitTime)
@@ -152,11 +118,22 @@ try {
     if ($jobStatus.State -eq "Completed") {
         Write-Host "Command execution succeeded!" -ForegroundColor Green
         
-        # Get and display the full log content one final time
-        $finalLogsResult = Invoke-AzVMRunCommand -ResourceGroupName $ResourceGroupName -VMName $vmName -CommandId 'RunPowerShellScript' -ScriptString $getLogsScript
-        if ($finalLogsResult.Value -and $finalLogsResult.Value[0].Message) {
+        # Now that the main job is complete, we can safely get logs
+        Write-Host "Retrieving execution logs..." -ForegroundColor Cyan
+        $getLogsScript = "if (Test-Path '$remoteTempPath') { Get-Content '$remoteTempPath' }"
+        
+        $logsResult = Invoke-AzVMRunCommand -ResourceGroupName $ResourceGroupName -VMName $vmName -CommandId 'RunPowerShellScript' -ScriptString $getLogsScript
+        
+        if ($logsResult.Value -and $logsResult.Value[0].Message) {
             Write-Host "== Full Execution Log ==" -ForegroundColor Green
-            Write-Host $finalLogsResult.Value[0].Message -ForegroundColor White
+            $logs = $logsResult.Value[0].Message -split "`n"
+            foreach ($line in $logs) {
+                if ($line.Trim()) {
+                    Write-Host $line -ForegroundColor Cyan
+                }
+            }
+        } else {
+            Write-Host "No logs found at $remoteTempPath" -ForegroundColor Yellow
         }
     } else {
         Write-Host "Command execution failed!" -ForegroundColor Red
@@ -166,10 +143,12 @@ try {
         }
         
         # Try to get any error output from the log file
-        $finalLogsResult = Invoke-AzVMRunCommand -ResourceGroupName $ResourceGroupName -VMName $vmName -CommandId 'RunPowerShellScript' -ScriptString $getLogsScript
-        if ($finalLogsResult.Value -and $finalLogsResult.Value[0].Message) {
+        $getLogsScript = "if (Test-Path '$remoteTempPath') { Get-Content '$remoteTempPath' }"
+        $logsResult = Invoke-AzVMRunCommand -ResourceGroupName $ResourceGroupName -VMName $vmName -CommandId 'RunPowerShellScript' -ScriptString $getLogsScript
+        
+        if ($logsResult.Value -and $logsResult.Value[0].Message) {
             Write-Host "== Error Log ==" -ForegroundColor Red
-            Write-Host $finalLogsResult.Value[0].Message -ForegroundColor White
+            Write-Host $logsResult.Value[0].Message -ForegroundColor White
         }
         
         throw "VM Run Command did not complete successfully"
