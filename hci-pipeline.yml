@@ -1,0 +1,305 @@
+trigger:
+  branches:
+    include:
+      - main  # adjust this to your main branch name
+  paths:
+    include:
+      - azure_jumpstart_hcibox/*
+
+parameters:
+- name: ResourceGroupName
+  displayName: 'Resource Group Name'
+  type: string
+  default: 'hcibox-test'
+- name: AzureSubscription
+  displayName: 'Azure Subscription'
+  type: string
+  default: 'HCIBox-ServiceConnection'
+- name: githubAccount
+  displayName: 'githubAccount'
+  type: string
+  default: 'ldabas-msft'
+- name: githubBranch
+  displayName: 'githubBranch'
+  type: string
+  default: 'main'
+
+variables:
+- group: hcibox-deployment
+- name: ResourceGroupName
+  value: ${{ parameters.ResourceGroupName }}
+- name: githubAccount
+  value: ${{ parameters.githubAccount }}
+- name: githubBranch
+  value: ${{ parameters.githubBranch }}
+
+stages:
+- stage: HCIBox_deployment
+  displayName: 'Deploy HCIBox'
+  jobs:
+  - job: DeployPipeline
+    displayName: 'Deploy Pipeline'
+    timeoutInMinutes: 600  # Job-level timeout for the entire pipeline
+    pool:
+      name: 'localbox-pool'
+      demands:
+        - Agent.OS -equals Windows_NT
+
+    steps:
+    - task: PowerShell@2
+      displayName: 'Environment Diagnostic Info'
+      inputs:
+        targetType: 'inline'
+        pwsh: false
+        script: |
+          Write-Host "========== System Information ==========" -ForegroundColor Green
+          Write-Host "Computer Name: $env:COMPUTERNAME"
+          Write-Host "OS Details:"
+          Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, BuildNumber, OSArchitecture
+          
+          Write-Host "`n========== PowerShell Versions ==========" -ForegroundColor Green
+          Write-Host "PowerShell Version Table:"
+          $PSVersionTable
+          
+          Write-Host "`nPowerShell Core Installation (if exists):"
+          $pwshPath = Get-Command pwsh -ErrorAction SilentlyContinue
+          if ($pwshPath) {
+              Write-Host "PowerShell Core Path: $($pwshPath.Path)"
+              Write-Host "PowerShell Core Version: $((& pwsh -Version))"
+          } else {
+              Write-Host "PowerShell Core (pwsh) is not installed"
+          }
+          
+          Write-Host "`nWindows PowerShell Installation:"
+          $psPath = Get-Command powershell -ErrorAction SilentlyContinue
+          Write-Host "Windows PowerShell Path: $($psPath.Path)"
+          
+          Write-Host "`n========== Azure PowerShell Modules ==========" -ForegroundColor Green
+          Write-Host "Az Module Versions:"
+          Get-Module -Name Az* -ListAvailable | 
+              Sort-Object Name, Version | 
+              Format-Table Name, Version, ModuleBase -AutoSize
+          
+          Write-Host "`n========== Environment Variables ==========" -ForegroundColor Green
+          Get-ChildItem Env: | Sort-Object Name | Format-Table Name, Value -AutoSize
+          
+          Write-Host "`n========== Available PowerShell Execution Policies ==========" -ForegroundColor Green
+          Get-ExecutionPolicy -List
+          
+          Write-Host "`n========== Working Directory ==========" -ForegroundColor Green
+          Write-Host "Current Directory: $(Get-Location)"
+          Write-Host "Build Directory: $env:BUILD_SOURCESDIRECTORY"
+          
+          Write-Host "`n========== Available Commands ==========" -ForegroundColor Green
+          Write-Host "Azure Commands Available:"
+          Get-Command -Module Az.* | Group-Object ModuleName | 
+              Format-Table Name, Count -AutoSize
+          
+          Write-Host "`n========== Network Connectivity ==========" -ForegroundColor Green
+          Write-Host "Testing connection to Azure:"
+          Test-NetConnection -ComputerName "management.azure.com" -Port 443
+          
+          Write-Host "`n========== Disk Space ==========" -ForegroundColor Green
+          Get-Volume | Where-Object {$_.DriveLetter} | 
+              Format-Table DriveLetter, FileSystemLabel, FileSystem, 
+                          @{N='Size(GB)';E={[math]::Round($_.Size/1GB,2)}}, 
+                          @{N='FreeSpace(GB)';E={[math]::Round($_.SizeRemaining/1GB,2)}}
+
+    - task: AzurePowerShell@5
+      displayName: 'Deploy resource group'
+      inputs:
+        azureSubscription: ${{ parameters.AzureSubscription }}
+        ScriptType: 'InlineScript'
+        azurePowerShellVersion: 'LatestVersion'
+        pwsh: true
+        Inline: |
+          Write-Host "Running deployment from machine $env:COMPUTERNAME"
+          # Add TLS 1.2 support
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          
+          # Import Az modules explicitly
+          Import-Module Az.Accounts
+          Import-Module Az.Resources
+          Write-Host "Running deployment from machine $env:COMPUTERNAME"
+          $RGname = "$(ResourceGroupName)"
+          New-AzResourceGroup -Name $RGname -Location "westeurope" -Force
+          
+    - task: AzurePowerShell@5
+      displayName: 'Deploy Bicep template'
+      timeoutInMinutes: 60  # Task-level timeout for this specific task
+      inputs:
+        azureSubscription: ${{ parameters.AzureSubscription }}
+        ScriptType: 'InlineScript'
+        azurePowerShellVersion: 'LatestVersion'
+        Inline: |
+          Write-Host "Deploying to $(ResourceGroupName)"
+          $githubAccount = "$(githubAccount)"
+          $githubBranch = "$(githubBranch)"
+          
+          # Set the current location to the repository root
+          Set-Location $(Build.SourcesDirectory)
+          
+          # Check if we need to clone the repository
+          $bicepPath = "azure_jumpstart_hcibox/bicep/main.bicep"
+          if (-not (Test-Path $bicepPath)) {
+              Write-Host "Bicep file not found at default path, attempting to clone repository..."
+              if ($githubAccount -ne "microsoft") {
+                  Write-Host "Checking out $githubAccount/$githubBranch"
+                  # Use HTTPS with PAT
+                  $pat = "$(GITHUB_PAT)"  # Add this to your pipeline variables
+                  $repoUrl = "https://raw.githubusercontent.com/${githubAccount}/azure_jumpstart_hcibox/${githubBranch}"
+
+                  # For git operations, we still need the .git URL
+                  $gitRepoUrl = "https://$($pat)@github.com/${githubAccount}/azure_jumpstart_hcibox.git"
+
+                  git config --global user.email "pipeline@jumpstart.com"
+                  git config --global user.name "HCIBox Pipeline"
+
+                  # Force the git operations
+                  git remote remove upstream 2>$null
+                  git remote add upstream $gitRepoUrl
+                  git fetch upstream --quiet
+                  git checkout -f -B $githubBranch upstream/$githubBranch --quiet
+              }
+          }
+
+          # Verify the bicep file exists after potential clone
+          if (-not (Test-Path $bicepPath)) {
+              Write-Error "Bicep file not found at: $bicepPath"
+              exit 1
+          }
+          
+          Write-Host "Using bicep file at: $bicepPath"
+          
+          New-AzResourceGroupDeployment -Name HCIBox `
+            -ResourceGroupName $(ResourceGroupName) `
+            -TemplateFile $bicepPath `
+            -TemplateParameterObject @{
+              spnClientId = "$(spnClientId)"
+              spnClientSecret = "$(spnClientSecret)"
+              spnTenantId = "$(spnTenantId)"
+              spnProviderId = "$(spnProviderId)"
+              windowsAdminUsername = "arcdemo"
+              windowsAdminPassword = "$(windowsAdminPassword)"
+              logAnalyticsWorkspaceName = "HCIBox-Workspace"
+              deployBastion = $false
+              autoDeployClusterResource = $true
+              autoUpgradeClusterResource = $false
+              githubAccount = "$(githubAccount)"
+              githubBranch = "$(githubBranch)"
+              location = "westeurope"
+              governResourceTags = $true
+              vmAutologon = $true
+            }
+
+    - task: AzurePowerShell@5
+      displayName: 'Wait for Deployment'
+      condition: succeeded()
+      inputs:
+        azureSubscription: ${{ parameters.AzureSubscription }}
+        ScriptType: 'InlineScript'
+        azurePowerShellVersion: 'LatestVersion'
+        Inline: |
+          Write-Host "Waiting for Deployment..."
+          Start-Sleep -Seconds 21600  # 1500 sec for testing
+          Write-Host "Wait complete!"
+
+    - task: AzurePowerShell@5
+      displayName: 'Assign Storage Blob Data Contributor role at resource group level'
+      inputs:
+        azureSubscription: ${{ parameters.AzureSubscription }}
+        ScriptType: 'InlineScript'
+        azurePowerShellVersion: 'LatestVersion'
+        Inline: |
+          # Get the resource group
+          $resourceGroup = Get-AzResourceGroup -Name "$(ResourceGroupName)"
+          Write-Host "Resource Group: $($resourceGroup.ResourceGroupName)"
+          
+          # Get the VM and its managed identity principal ID
+          $vm = Get-AzVM -Name "HCIBox-Client" -ResourceGroupName "$(ResourceGroupName)"
+          $clientObjectId = $vm.Identity.PrincipalId
+          
+          if (!$clientObjectId) {
+              Write-Error "No managed identity found on HCIBox-Client VM. Make sure the VM has a system-assigned identity."
+              exit 1
+          }
+          
+          Write-Host "VM Identity Object ID: $clientObjectId"
+          
+          # Assign at resource group level which covers all storage accounts
+          Write-Host "Assigning Storage Blob Data Contributor role to VM identity at resource group level"
+          $roleAssignment = New-AzRoleAssignment -ObjectId $clientObjectId `
+                           -RoleDefinitionName "Storage Blob Data Contributor" `
+                           -Scope $resourceGroup.ResourceId `
+                           -ErrorAction SilentlyContinue
+                           
+          if ($roleAssignment) {
+              Write-Host "Role assignment created successfully at resource group level" -ForegroundColor Green
+          } else {
+              Write-Host "Role assignment may already exist or failed at resource group level" -ForegroundColor Yellow
+          }
+          
+          Write-Host "Waiting 20 seconds for role assignment to propagate..."
+          Start-Sleep -Seconds 20
+          Write-Host "Role assignment wait complete"
+    
+    - task: AzurePowerShell@5
+      displayName: 'Upload Pester test-results from HCIBox VM'
+      inputs:
+        azureSubscription: ${{ parameters.AzureSubscription }}
+        ScriptType: FilePath
+        azurePowerShellVersion: 'LatestVersion'
+        ScriptPath: 'azure_jumpstart_hcibox/artifacts/PowerShell/Wait-HCIBoxDeployment.ps1'
+        ScriptArguments: -ResourceGroupName $(ResourceGroupName) -SubscriptionId $(subscriptionId) -TenantId $(spnTenantId) -ClientId $(spnClientId) -ClientSecret $(spnClientSecret) -Verbose
+
+    - task: AzurePowerShell@5
+      displayName: 'Download Pester test-results from storage account to pipeline agent'
+      inputs:
+        azureSubscription: ${{ parameters.AzureSubscription }}
+        ScriptType: FilePath
+        azurePowerShellVersion: 'LatestVersion'
+        ScriptPath: 'azure_jumpstart_hcibox/artifacts/PowerShell/Get-PesterResult.ps1'
+        ScriptArguments: -ResourceGroupName $(ResourceGroupName)
+
+    - task: PublishTestResults@2
+      displayName: 'Publish Test Results'
+      inputs:
+        testResultsFormat: NUnit
+        testResultsFiles: '$(System.DefaultWorkingDirectory)/testresults/*.xml'
+    
+    - task: AzurePowerShell@5
+      displayName: 'Delete resource group - successful run'
+      condition: succeeded() # Will only run if all previous tasks succeed
+      inputs:
+        azureSubscription: ${{ parameters.AzureSubscription }}
+        ScriptType: 'InlineScript'
+        azurePowerShellVersion: 'LatestVersion'
+        Inline: |
+          Write-Host "Tests passed - Deleting resource group $(ResourceGroupName)"
+          Remove-AzResourceGroup -Name "$(ResourceGroupName)" -Force
+          
+- stage: destroy
+  displayName: 'HCIBox_teardown'
+  dependsOn: HCIBox_deployment
+  condition: failed('HCIBox_deployment')
+  jobs:
+  - deployment: GetApproval  # Adding explicit name
+    displayName: "Get approval for cleanup"
+    environment: 'hcibox_teardown_approval'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - script: echo "Approval granted for teardown"
+  - job: Delete
+    dependsOn: GetApproval  # Now referencing the explicit name
+    steps:
+    - task: AzurePowerShell@5
+      displayName: 'Delete resource group after approval'
+      inputs:
+        azureSubscription: ${{ parameters.AzureSubscription }}
+        ScriptType: 'InlineScript'
+        azurePowerShellVersion: 'LatestVersion'
+        Inline: |
+          Write-Host "Tests failed but cleanup approved - Deleting resource group $(ResourceGroupName)"
+          Remove-AzResourceGroup -Name "$(ResourceGroupName)" -Force
