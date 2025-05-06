@@ -4,13 +4,13 @@ trigger:
       - main  # adjust this to your main branch name
   paths:
     include:
-      - azure_jumpstart_hcibox/*
+      - azure_jumpstart_localbox/*
 
 parameters:
 - name: ResourceGroupName
   displayName: 'Resource Group Name'
   type: string
-  default: 'hcibox-test'
+  default: 'localbox-pipeline-rg'
 - name: AzureSubscription
   displayName: 'Azure Subscription'
   type: string
@@ -35,7 +35,7 @@ variables:
 
 stages:
 - stage: HCIBox_deployment
-  displayName: 'Deploy HCIBox'
+  displayName: 'Deploy LocalBox'
   jobs:
   - job: DeployPipeline
     displayName: 'Deploy Pipeline'
@@ -46,64 +46,6 @@ stages:
         - Agent.OS -equals Windows_NT
 
     steps:
-    - task: PowerShell@2
-      displayName: 'Environment Diagnostic Info'
-      inputs:
-        targetType: 'inline'
-        pwsh: false
-        script: |
-          Write-Host "========== System Information ==========" -ForegroundColor Green
-          Write-Host "Computer Name: $env:COMPUTERNAME"
-          Write-Host "OS Details:"
-          Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, BuildNumber, OSArchitecture
-          
-          Write-Host "`n========== PowerShell Versions ==========" -ForegroundColor Green
-          Write-Host "PowerShell Version Table:"
-          $PSVersionTable
-          
-          Write-Host "`nPowerShell Core Installation (if exists):"
-          $pwshPath = Get-Command pwsh -ErrorAction SilentlyContinue
-          if ($pwshPath) {
-              Write-Host "PowerShell Core Path: $($pwshPath.Path)"
-              Write-Host "PowerShell Core Version: $((& pwsh -Version))"
-          } else {
-              Write-Host "PowerShell Core (pwsh) is not installed"
-          }
-          
-          Write-Host "`nWindows PowerShell Installation:"
-          $psPath = Get-Command powershell -ErrorAction SilentlyContinue
-          Write-Host "Windows PowerShell Path: $($psPath.Path)"
-          
-          Write-Host "`n========== Azure PowerShell Modules ==========" -ForegroundColor Green
-          Write-Host "Az Module Versions:"
-          Get-Module -Name Az* -ListAvailable | 
-              Sort-Object Name, Version | 
-              Format-Table Name, Version, ModuleBase -AutoSize
-          
-          Write-Host "`n========== Environment Variables ==========" -ForegroundColor Green
-          Get-ChildItem Env: | Sort-Object Name | Format-Table Name, Value -AutoSize
-          
-          Write-Host "`n========== Available PowerShell Execution Policies ==========" -ForegroundColor Green
-          Get-ExecutionPolicy -List
-          
-          Write-Host "`n========== Working Directory ==========" -ForegroundColor Green
-          Write-Host "Current Directory: $(Get-Location)"
-          Write-Host "Build Directory: $env:BUILD_SOURCESDIRECTORY"
-          
-          Write-Host "`n========== Available Commands ==========" -ForegroundColor Green
-          Write-Host "Azure Commands Available:"
-          Get-Command -Module Az.* | Group-Object ModuleName | 
-              Format-Table Name, Count -AutoSize
-          
-          Write-Host "`n========== Network Connectivity ==========" -ForegroundColor Green
-          Write-Host "Testing connection to Azure:"
-          Test-NetConnection -ComputerName "management.azure.com" -Port 443
-          
-          Write-Host "`n========== Disk Space ==========" -ForegroundColor Green
-          Get-Volume | Where-Object {$_.DriveLetter} | 
-              Format-Table DriveLetter, FileSystemLabel, FileSystem, 
-                          @{N='Size(GB)';E={[math]::Round($_.Size/1GB,2)}}, 
-                          @{N='FreeSpace(GB)';E={[math]::Round($_.SizeRemaining/1GB,2)}}
 
     - task: AzurePowerShell@5
       displayName: 'Deploy resource group'
@@ -147,10 +89,10 @@ stages:
                   Write-Host "Checking out $githubAccount/$githubBranch"
                   # Use HTTPS with PAT
                   $pat = "$(GITHUB_PAT)"  # Add this to your pipeline variables
-                  $repoUrl = "https://raw.githubusercontent.com/${githubAccount}/azure_jumpstart_hcibox/${githubBranch}"
+                  $repoUrl = "https://raw.githubusercontent.com/${githubAccount}/azure_jumpstart_localbox/${githubBranch}"
 
                   # For git operations, we still need the .git URL
-                  $gitRepoUrl = "https://$($pat)@github.com/${githubAccount}/azure_jumpstart_hcibox.git"
+                  $gitRepoUrl = "https://$($pat)@github.com/${githubAccount}/azure_jumpstart_localbox.git"
 
                   git config --global user.email "pipeline@jumpstart.com"
                   git config --global user.name "HCIBox Pipeline"
@@ -249,7 +191,7 @@ stages:
         azureSubscription: ${{ parameters.AzureSubscription }}
         ScriptType: FilePath
         azurePowerShellVersion: 'LatestVersion'
-        ScriptPath: 'azure_jumpstart_hcibox/artifacts/PowerShell/Wait-HCIBoxDeployment.ps1'
+        ScriptPath: 'azure_jumpstart_localbox/artifacts/PowerShell/Wait-LocalBoxDeployment.ps1'
         ScriptArguments: -ResourceGroupName $(ResourceGroupName) -SubscriptionId $(subscriptionId) -TenantId $(spnTenantId) -ClientId $(spnClientId) -ClientSecret $(spnClientSecret) -Verbose
 
     - task: AzurePowerShell@5
@@ -258,7 +200,7 @@ stages:
         azureSubscription: ${{ parameters.AzureSubscription }}
         ScriptType: FilePath
         azurePowerShellVersion: 'LatestVersion'
-        ScriptPath: 'azure_jumpstart_hcibox/artifacts/PowerShell/Get-PesterResult.ps1'
+        ScriptPath: 'azure_jumpstart_localbox/artifacts/PowerShell/Get-PesterResult.ps1'
         ScriptArguments: -ResourceGroupName $(ResourceGroupName)
 
     - task: PublishTestResults@2
