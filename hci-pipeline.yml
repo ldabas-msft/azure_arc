@@ -89,16 +89,19 @@ stages:
                   Write-Host "Checking out $githubAccount/$githubBranch"
                   # Use HTTPS with PAT
                   $pat = "$(GITHUB_PAT)"  # Add this to your pipeline variables
-                  $repoUrl = "https://raw.githubusercontent.com/${githubAccount}/azure_jumpstart_localbox/${githubBranch}"
+                  $repoUrl = "https://raw.githubusercontent.com/${githubAccount}/azure_jumpstart_hcibox/${githubBranch}"
 
                   # For git operations, we still need the .git URL
-                  $gitRepoUrl = "https://$($pat)@github.com/${githubAccount}/azure_jumpstart_localbox.git"
+                  $gitRepoUrl = "https://$($pat)@github.com/${githubAccount}/azure_jumpstart_hcibox.git"
 
                   git config --global user.email "pipeline@jumpstart.com"
                   git config --global user.name "HCIBox Pipeline"
 
-                  # Force the git operations
-                  git remote remove upstream 2>$null
+                  # Check if upstream remote exists before removing it
+                  $remoteExists = git remote | Where-Object { $_ -eq "upstream" }
+                  if ($remoteExists) {
+                      git remote remove upstream
+                  }
                   git remote add upstream $gitRepoUrl
                   git fetch upstream --quiet
                   git checkout -f -B $githubBranch upstream/$githubBranch --quiet
