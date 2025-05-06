@@ -34,7 +34,7 @@ variables:
   value: ${{ parameters.githubBranch }}
 
 stages:
-- stage: HCIBox_deployment
+- stage: localbox_deployment
   displayName: 'Deploy LocalBox'
   jobs:
   - job: DeployPipeline
@@ -82,20 +82,20 @@ stages:
           Set-Location $(Build.SourcesDirectory)
           
           # Check if we need to clone the repository
-          $bicepPath = "azure_jumpstart_hcibox/bicep/main.bicep"
+          $bicepPath = "azure_jumpstart_localbox/bicep/main.bicep"
           if (-not (Test-Path $bicepPath)) {
               Write-Host "Bicep file not found at default path, attempting to clone repository..."
               if ($githubAccount -ne "microsoft") {
                   Write-Host "Checking out $githubAccount/$githubBranch"
                   # Use HTTPS with PAT
                   $pat = "$(GITHUB_PAT)"  # Add this to your pipeline variables
-                  $repoUrl = "https://raw.githubusercontent.com/${githubAccount}/azure_jumpstart_hcibox/${githubBranch}"
+                  $repoUrl = "https://raw.githubusercontent.com/${githubAccount}/azure_jumpstart_localbox/${githubBranch}"
 
                   # For git operations, we still need the .git URL
-                  $gitRepoUrl = "https://$($pat)@github.com/${githubAccount}/azure_jumpstart_hcibox.git"
+                  $gitRepoUrl = "https://$($pat)@github.com/${githubAccount}/azure_jumpstart_localbox.git"
 
                   git config --global user.email "pipeline@jumpstart.com"
-                  git config --global user.name "HCIBox Pipeline"
+                  git config --global user.name "localbox Pipeline"
 
                   # Check if upstream remote exists before removing it
                   $remoteExists = git remote | Where-Object { $_ -eq "upstream" }
@@ -116,7 +116,7 @@ stages:
           
           Write-Host "Using bicep file at: $bicepPath"
           
-          New-AzResourceGroupDeployment -Name HCIBox `
+          New-AzResourceGroupDeployment -Name LocalBox `
             -ResourceGroupName $(ResourceGroupName) `
             -TemplateFile $bicepPath `
             -TemplateParameterObject @{
@@ -126,7 +126,7 @@ stages:
               spnProviderId = "$(spnProviderId)"
               windowsAdminUsername = "arcdemo"
               windowsAdminPassword = "$(windowsAdminPassword)"
-              logAnalyticsWorkspaceName = "HCIBox-Workspace"
+              logAnalyticsWorkspaceName = "LocalBox-Workspace"
               deployBastion = $false
               autoDeployClusterResource = $true
               autoUpgradeClusterResource = $false
@@ -161,11 +161,11 @@ stages:
           Write-Host "Resource Group: $($resourceGroup.ResourceGroupName)"
           
           # Get the VM and its managed identity principal ID
-          $vm = Get-AzVM -Name "HCIBox-Client" -ResourceGroupName "$(ResourceGroupName)"
+          $vm = Get-AzVM -Name "LocalBox-Client" -ResourceGroupName "$(ResourceGroupName)"
           $clientObjectId = $vm.Identity.PrincipalId
           
           if (!$clientObjectId) {
-              Write-Error "No managed identity found on HCIBox-Client VM. Make sure the VM has a system-assigned identity."
+              Write-Error "No managed identity found on LocalBox-Client VM. Make sure the VM has a system-assigned identity."
               exit 1
           }
           
@@ -189,7 +189,7 @@ stages:
           Write-Host "Role assignment wait complete"
     
     - task: AzurePowerShell@5
-      displayName: 'Upload Pester test-results from HCIBox VM'
+      displayName: 'Upload Pester test-results from LocalBox VM'
       inputs:
         azureSubscription: ${{ parameters.AzureSubscription }}
         ScriptType: FilePath
@@ -224,13 +224,13 @@ stages:
           Remove-AzResourceGroup -Name "$(ResourceGroupName)" -Force
           
 - stage: destroy
-  displayName: 'HCIBox_teardown'
-  dependsOn: HCIBox_deployment
-  condition: failed('HCIBox_deployment')
+  displayName: 'Localbox_teardown'
+  dependsOn: Localbox_deployment
+  condition: failed('Localbox_deployment')
   jobs:
   - deployment: GetApproval  # Adding explicit name
     displayName: "Get approval for cleanup"
-    environment: 'hcibox_teardown_approval'
+    environment: 'Localbox_teardown_approval'
     strategy:
       runOnce:
         deploy:
