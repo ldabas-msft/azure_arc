@@ -11,7 +11,7 @@ param(
     [string]$ClientSecret
 )
 
-Write-Host "Starting VM Run Command to run tests on HCIBox-Client in resource group $ResourceGroupName"
+Write-Host "Starting VM Run Command to run tests on LocalBox-Client in resource group $ResourceGroupName"
 
 # Fix authentication - create a credential object
 try {
@@ -25,7 +25,7 @@ try {
     throw
 }
 
-$vmName = "HCIBox-Client"
+$vmName = "LocalBox-Client"
 
 try {
     $VM = Get-AzVM -ResourceGroupName $ResourceGroupName -Name $vmName -ErrorAction Stop
@@ -39,7 +39,7 @@ try {
 Write-Host "Executing Run Command on VM: $vmName" -ForegroundColor Green
 
 # Create a unique log file path for this run
-$logFileName = "HCIBox_Diagnostic_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+$logFileName = "LocalBox_Diagnostic_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
 $remoteTempPath = "C:\Windows\Temp\$logFileName"
 
 # Modified script that properly logs to the file
